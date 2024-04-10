@@ -133,9 +133,7 @@ export default {
 
 .short-text {
   font-size: 18px;
-  /* Set font size to 18px */
   font-weight: bold;
-  /* Set font weight to bold */
 }
 
 .content-wrapper {
@@ -147,9 +145,7 @@ export default {
 
 .expanded-image {
   max-width: 60%;
-  /* Limit maximum width of the image to 80% of the modal width */
   max-height: 60vh;
-  /* Limit maximum height of the image to 80% of the viewport height */
 }
 
 .video-wrapper {
