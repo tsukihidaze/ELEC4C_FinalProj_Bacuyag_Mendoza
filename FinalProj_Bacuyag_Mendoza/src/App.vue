@@ -14,7 +14,7 @@
           <p>{{ card.shortText }}</p>
         </div>
       </div>
-
+      <!-- hide and show card modal fcn -->
       <div v-if="modalVisible" class="modal" @click="hideModal">
         <div class="modal-content" @click.stop>
           <div class="content-wrapper">
@@ -27,7 +27,7 @@
           </div>
         </div>
       </div>
-
+      <!-- hide and show NEW card input modal fcn -->
       <div v-if="inputModalVisible" class="modal" @click="hideInputModal">
         <div class="modal-content" @click.stop>
           <form @submit.prevent="addCard">
@@ -39,6 +39,7 @@
           </form>
         </div>
       </div>
+
     </div>
 
     <!-- add content button (inputModal) -->
@@ -59,15 +60,8 @@ export default {
   },
   data() {
     return {
-      cards: [
-        {
-          image:
-            "https://i.redd.it/anyone-able-to-clean-up-these-two-screenshots-as-wallpaper-v0-xohr3hh15cxb1.jpg?width=1920&format=pjpg&auto=webp&s=5aae4f51cde364ab7105d9541284279d67e6477e",
-          videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-          shortText: "Short text 1",
-          longText: "Long text 1",
-        },
-      ],
+
+      cards: JSON.parse(localStorage.getItem('animeOdysseyCards')) || [],
       modalVisible: false,
       selectedCard: {},
       inputModalVisible: false,
@@ -78,6 +72,15 @@ export default {
         longText: "",
       },
     };
+  },
+  computed: {
+    isURLValid() {
+      // Regular expression to validate URL format
+      const urlRegex = /^(ftp|http|https):\/\/[^ "]+$/;
+
+      // Check if both imageURL and videoURL match the regex
+      return urlRegex.test(this.newCard.image) && urlRegex.test(this.newCard.videoUrl);
+    }
   },
   methods: {
     openLoginModal() {
@@ -96,7 +99,16 @@ export default {
     hideInputModal() {
       this.inputModalVisible = false;
     },
+
     addCard() {
+      // Check if the URLs are valid
+      if (!this.isURLValid) {
+        // If any of the URLs are invalid, display an error message
+        alert('Please enter valid URLs for Image and Video.');
+        return;
+      }
+
+      // If both URLs are valid, proceed with adding the card
       this.cards.push(this.newCard);
       this.newCard = {
         image: "",
@@ -104,8 +116,9 @@ export default {
         shortText: "",
         longText: "",
       };
+      localStorage.setItem('animeOdysseyCards', JSON.stringify(this.cards));
       this.inputModalVisible = false;
-    },
+    }
   },
 };
 </script>
@@ -114,6 +127,7 @@ export default {
 .cardContainer {
   display: flex;
   justify-content: center;
+  color: black;
 }
 
 .cardGrid {
@@ -124,6 +138,7 @@ export default {
   background-color: #f8f9fa;
   padding: 20px;
   border-radius: 8px;
+  color: black;
 }
 
 .card {
@@ -134,6 +149,7 @@ export default {
   cursor: pointer;
   margin-bottom: 20px;
   box-sizing: border-box;
+  color: black;
 }
 
 .modal {
