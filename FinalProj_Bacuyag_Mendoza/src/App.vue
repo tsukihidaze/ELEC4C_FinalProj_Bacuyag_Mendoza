@@ -1,25 +1,16 @@
 <template>
   <header class="header">
-      <h1>Anime Odyssey</h1>
-      <div v-if="!isLoggedIn">
-        <input type="text" v-model="username" placeholder="Username" />
-        <input type="password" v-model="password" placeholder="Password" />
-        <button @click="login">Login</button>
-      </div>
-      <div v-if="isLoggedIn">
-        <p>Welcome, {{ username }}!</p>
-        <button @click="logout">Logout</button>
-      </div>
-    </header>
+    <h1>Anime Odyssey</h1>
+    <button @click="openLoginModal">Login</button>
+  </header>
+  <!-- login modal -->
+  <LoginModal ref="loginModal" />
+  <!-- card modal  -->
   <div class="cardContainer">
     <div class="cardGrid">
       <div v-for="(card, index) in cards" :key="index" @click="showModal(card)">
         <div class="card">
-          <img
-            :src="card.image"
-            alt="Card Image"
-            style="max-width: 100%; max-height: 100%"
-          />
+          <img :src="card.image" alt="Card Image" style="max-width: 100%; max-height: 100%" />
           <p>{{ card.shortText }}</p>
         </div>
       </div>
@@ -27,19 +18,9 @@
       <div v-if="modalVisible" class="modal" @click="hideModal">
         <div class="modal-content" @click.stop>
           <div class="content-wrapper">
-            <img
-              :src="selectedCard.image"
-              alt="Expanded Image"
-              class="expanded-image"
-            />
+            <img :src="selectedCard.image" alt="Expanded Image" class="expanded-image" />
             <div class="video-wrapper">
-              <iframe
-                width="560"
-                height="315"
-                :src="selectedCard.videoUrl"
-                frameborder="0"
-                allowfullscreen
-              ></iframe>
+              <iframe width="560" height="315" :src="selectedCard.videoUrl" frameborder="0" allowfullscreen></iframe>
             </div>
             <p class="short-text">{{ selectedCard.shortText }}</p>
             <p>{{ selectedCard.longText }}</p>
@@ -50,42 +31,32 @@
       <div v-if="inputModalVisible" class="modal" @click="hideInputModal">
         <div class="modal-content" @click.stop>
           <form @submit.prevent="addCard">
-            <input
-              type="text"
-              v-model="newCard.image"
-              placeholder="Image URL"
-            />
-            <input
-              type="text"
-              v-model="newCard.videoUrl"
-              placeholder="Video URL"
-            />
-            <input
-              type="text"
-              v-model="newCard.shortText"
-              placeholder="Short Text"
-            />
-            <input
-              type="text"
-              v-model="newCard.longText"
-              placeholder="Long Text"
-            />
+            <input type="text" v-model="newCard.image" placeholder="Image URL" />
+            <input type="text" v-model="newCard.videoUrl" placeholder="Video URL" />
+            <input type="text" v-model="newCard.shortText" placeholder="Short Text" />
+            <input type="text" v-model="newCard.longText" placeholder="Long Text" />
             <button type="submit">Add</button>
           </form>
         </div>
       </div>
     </div>
+
+    <!-- add content button (inputModal) -->
     <button class="floatingButton" @click="showInputModal">+</button>
 
     <footer class="footer">
       <p>&copy; 2024 Anime Odyssey. All rights reserved.</p>
     </footer>
   </div>
-  
+
 </template>
 
 <script>
+import LoginModal from '/src/components/LoginModal.vue';
 export default {
+  components: {
+    LoginModal,
+  },
   data() {
     return {
       cards: [
@@ -109,6 +80,9 @@ export default {
     };
   },
   methods: {
+    openLoginModal() {
+      this.$refs.loginModal.openModal();
+    },
     showModal(card) {
       this.selectedCard = card;
       this.modalVisible = true;
@@ -243,15 +217,16 @@ export default {
 .floatingButton:hover {
   background-color: #aa00ff;
 }
+
 body {
   margin: 0;
-  padding: 0; 
+  padding: 0;
 }
 
 .header {
   position: fixed;
   top: 0;
-  left: 0; 
+  left: 0;
   background-color: #aa00ff;
   color: white;
   padding: 20px;
@@ -259,6 +234,7 @@ body {
   border-radius: 8px;
   width: 100%;
 }
+
 .header input {
   padding: 5px;
   margin: 5px;
@@ -285,7 +261,7 @@ body {
 
 .floatingButton {
   position: fixed;
-  bottom: 80px; 
+  bottom: 80px;
   right: 20px;
   width: 50px;
   height: 50px;
