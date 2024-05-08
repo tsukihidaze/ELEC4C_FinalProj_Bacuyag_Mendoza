@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import LoginModal from '/src/components/LoginModal.vue';
 
 const query = ref('')
 const my_anime = ref([])
@@ -11,20 +10,42 @@ const my_anime_asc = computed(() => {
     return a.title.localeCompare(b.title)
   })
 })
+const topAnime = ref([]);
 
+onMounted(async () => {
+  topAnime.value = await fetchTopAnime();
+});
 const searchAnime = () => {
   const url = `https://api.jikan.moe/v4/anime?q=${query.value}`
   fetch(url)
- .then(res => res.json())
- .then(data => {
-    search_results.value = data.data
-  })
+    .then(res => res.json())
+    .then(data => {
+      search_results.value = data.data
+    })
 }
-
+const removeAnime = (anime) => {
+  my_anime.value = my_anime.value.filter(item => item.id !== anime.id);
+  localStorage.setItem('my_anime', JSON.stringify(my_anime.value));
+}
 const handleInput = (e) => {
   if (!e.target.value) {
     search_results.value = []
   }
+}
+const fetchTopAnime = async () => {
+  const url = 'https://api.jikan.moe/v4/top/anime';
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error fetching top anime:', error);
+    return [];
+  }
+};
+const updateReview = (anime) => {
+  anime.review = anime.newReview;
+  localStorage.setItem('my_anime', JSON.stringify(my_anime.value));
 }
 
 const addAnime = (anime) => {
@@ -72,10 +93,6 @@ const isURLValid = computed(() => {
   return urlRegex.test(newCard.value.image) && urlRegex.test(newCard.value.videoUrl);
 })
 
-const openLoginModal = () => {
-  // Assuming LoginModal has an openModal method
-  // This might need to be adjusted based on the actual implementation of LoginModal
-}
 
 const showModal = (card) => {
   selectedCard.value = card
@@ -112,105 +129,172 @@ const addCard = () => {
 }
 
 const deleteCard = (index) => {
-  cards.value.splice(index, 1); // Remove the card from the array
-  localStorage.setItem('animeOdysseyCards', JSON.stringify(cards.value)); // Update local storage
+  cards.value.splice(index, 1);
+  localStorage.setItem('animeOdysseyCards', JSON.stringify(cards.value));
 }
 
 
 </script>
 
 <template>
-  <main>
-	<header class="header">
-    <h1>Anime Odyssey</h1>
-    <button @click="openLoginModal">Login</button>
-  </header>
-    <h1>My Anime Tracker</h1>
-  
-    <form @submit.prevent="searchAnime">
-      <input type="text" placeholder="Search for an anime..." v-model="query" @input="handleInput" />
-      <button type="submit" class="button">Search</button>
-    </form>
-
-    <div class="results" v-if="search_results.length > 0">
-      <div v-for="anime in search_results" class="result">
-        <img :src="anime.images.jpg.image_url" />
-        <div class="details">
-          <h3>{{ anime.title }}</h3>
-          <p :title="anime.synopsis" v-if="anime.synopsis">{{ anime.synopsis.slice(0, 120) }}...</p>
-          <span class="flex-1"></span>
-          <button @click="addAnime(anime)" class="button">Add to My Anime</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="myanime" v-if="my_anime.length > 0">
-      <h2>My Anime</h2>
-
-      <div v-for="anime in my_anime_asc" class="anime">
-        <img :src="anime.image" />
-        <h3>{{ anime.title }}</h3>
-        <div class="flex-1"></div>
-        <span class="episodes">{{ anime.watched_episodes }} / {{ anime.total_episodes }}</span>
-        <button 
-          v-if="anime.total_episodes!== anime.watched_episodes" 
-          @click="increaseWatch(anime)" class="button">+</button>
-        <button 
-          v-if="anime.watched_episodes > 0"
-          @click="decreaseWatch(anime)" class="button">-</button>
-      </div>
-    </div>
-
-	<div class="cardContainer">
-    <div class="cardGrid">
-      <div v-for="(card, index) in cards" :key="index" @click="showModal(card)">
-        <div class="card">
-          <img :src="card.image" alt="Card Image" style="max-width: 100%; max-height: 100%" />
-          <p>{{ card.shortText }}</p>
-          <button class="delete-button" @click="deleteCard(index)">Delete</button>
-
-        </div>
-      </div>
-      <!-- hide and show card modal fcn -->
-      <div v-if="modalVisible" class="modal" @click="hideModal">
-        <div class="modal-content" @click.stop>
-          <div class="content-wrapper">
-            <img :src="selectedCard.image" alt="Expanded Image" class="expanded-image" />
-            <div class="video-wrapper">
-              <iframe width="560" height="315" :src="selectedCard.videoUrl" frameborder="0" allowfullscreen></iframe>
+  <main class="layout-container">
+    <div class="section">
+      <h1>Top Anime</h1>
+      <div class="top-anime-container">
+        <div class="top-anime">
+          <div v-for="(anime, index) in topAnime" :key="anime.mal_id" class="anime-card">
+            <img :src="anime.images.jpg.image_url" alt="Anime Cover" />
+            <div class="anime-details">
+              <h3>{{ anime.title }}</h3>
+              <p>{{ anime.synopsis.slice(0, 120) }}...</p>
             </div>
-            <p class="short-text">{{ selectedCard.shortText }}</p>
-            <p>{{ selectedCard.longText }}</p>
           </div>
         </div>
       </div>
-      <!-- hide and show NEW card input modal fcn -->
-      <div v-if="inputModalVisible" class="modal" @click="hideInputModal">
-        <div class="modal-content" @click.stop>
-          <form @submit.prevent="addCard">
-            <input type="text" v-model="newCard.image" placeholder="Image URL" />
-            <input type="text" v-model="newCard.videoUrl" placeholder="Video URL" />
-            <input type="text" v-model="newCard.shortText" placeholder="Short Text" />
-            <input type="text" v-model="newCard.longText" placeholder="Long Text" />
-            <button type="submit">Add</button>
-          </form>
-        </div>
-      </div>
-
     </div>
 
-    <!-- add content button (inputModal) -->
-    <button class="floatingButton" @click="showInputModal">+</button>
+    <div class="section">
+      <div class="anime-spaced">
+        <div class="myanime" v-if="my_anime.length > 0">
+          <h1>My Anime List</h1>
+
+          <div class="myanime-scroll">
+            <div v-for="anime in my_anime_asc" class="anime">
+              <div class="anime-details anime-list-details">
+                <img :src="anime.image" class="anime-list-image" />
+                <h3>{{ anime.title }}</h3>
+              </div>
+              <div class="flex-1"></div>
+              <div class="anime-actions">
+                <span class="episodes">{{ anime.watched_episodes }} / {{ anime.total_episodes }}</span>
+                <button v-if="anime.total_episodes !== anime.watched_episodes" @click="increaseWatch(anime)"
+                  class="button">+</button>
+                <button v-if="anime.watched_episodes > 0" @click="decreaseWatch(anime)" class="button">-</button>
+                <div class="remove-button" @click="removeAnime(anime)">x</div>
+              </div>
+              <div class="review-container">
+                <textarea v-model="anime.newReview" placeholder="Add/Edit Review"></textarea>
+                <button @click="updateReview(anime)" class="button">Save Review</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="search-container">
+        <header class="header">
+          <h1>Anime Odyssey</h1>
+        </header>
+        <h1>Anime Search</h1>
+        <form @submit.prevent="searchAnime">
+          <input type="text" placeholder="Search" v-model="query" @input="handleInput" />
+          <button type="submit" class="button">Search</button>
+        </form>
+
+        <div class="results" v-if="search_results.length > 0">
+          <div v-for="anime in search_results" class="result">
+            <img :src="anime.images.jpg.image_url" />
+            <div class="details">
+              <h3>{{ anime.title }}</h3>
+              <p :title="anime.synopsis" v-if="anime.synopsis">{{ anime.synopsis.slice(0, 120) }}...</p>
+              <span class="flex-1"></span>
+              <button @click="addAnime(anime)" class="button">Add to My Anime</button>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
 
     <footer class="footer">
       <p>&copy; 2024 Anime Odyssey. All rights reserved.</p>
     </footer>
-  </div>
   </main>
 </template>
 
 
 <style scoped>
+.anime {
+  display: flex;
+  flex-direction: column;
+}
+
+.myanime-scroll {
+  max-height: 650px;
+  overflow-y: auto;
+}
+
+.anime-list-details {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.anime-list-image {
+  max-width: 100%;
+  height: auto;
+}
+
+.anime-actions {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+
+textarea {
+  width: 100%;
+  padding: 5px;
+  resize: vertical;
+  min-height: 50px;
+}
+
+.anime-card {
+  width: calc(33.33% - 20px);
+  margin: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.review-container {
+  margin-bottom: 10px;
+}
+
+@media screen and (max-width: 1200px) {
+  .anime-card {
+    width: calc(50% - 20px);
+
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .anime-card {
+    width: calc(100% - 20px);
+
+  }
+}
+
+.top-anime-container {
+  overflow-y: auto;
+  max-height: 650px;
+}
+
+.section {
+  margin-top: 15px;
+  max-width: 36%;
+  padding: 20px;
+}
+
+.section h1 {
+  margin-top: 5px;
+  padding-bottom: 20px;
+  text-align: center;
+}
 
 .cardContainer {
   display: flex;
@@ -299,6 +383,7 @@ const deleteCard = (index) => {
   border: none;
   cursor: pointer;
 }
+
 .layout-container {
   display: flex;
   justify-content: space-between;
@@ -306,9 +391,6 @@ const deleteCard = (index) => {
   padding: 20px;
 }
 
-.search-container {
-  flex: 1;
-}
 
 .cardGrid {
   flex: 1;
@@ -318,6 +400,22 @@ const deleteCard = (index) => {
   padding: 20px;
 }
 
+.layout-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  max-width: 900px;
+}
+
+
 .floatingButton {
   position: fixed;
   bottom: 20px;
@@ -340,34 +438,16 @@ const deleteCard = (index) => {
   background-color: #aa00ff;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-}
-
 .header {
   position: fixed;
   top: 0;
   left: 0;
   background-color: #aa00ff;
   color: white;
-  padding: 20px;
   text-align: center;
   border-radius: 8px;
   width: 100%;
-}
-
-.header input {
-  padding: 5px;
-  margin: 5px;
-}
-
-.header button {
-  padding: 5px 10px;
-  background-color: white;
-  color: #aa00ff;
-  border: none;
-  cursor: pointer;
+  padding-bottom: 1%;
 }
 
 .footer {
@@ -402,160 +482,167 @@ body {
 .floatingButton:hover {
   background-color: #0056b3;
 }
+
 * {
-	margin: 0;
-	padding: 0;
-	box-sizing: border-box;
-	font-family: 'Fira Sans', sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Fira Sans', sans-serif;
 }
 
 body {
-	background-color: #EEE;
+  background-color: #EEE;
 }
 
 main {
-  margin-top: 60px; /* Adjust based on the height of your header */
+  margin-top: 3%;
   padding: 1.5rem;
-}
 
-
-h1 {
-	text-align: center;
-	margin-bottom: 1.5rem;
 }
 
 form {
-	display: flex;
-	max-width: 480px;
-	margin: 0 auto 1.5rem;
+  display: flex;
+  max-width: 480px;
+  margin: 0 auto 1.5rem;
 }
 
 form input {
-	appearance: none;
-	outline: none;
-	border: none;
-	background: white;
+  appearance: none;
+  outline: none;
+  border: none;
+  background: white;
 
-	display: block;
-	color: #888;
-	font-size: 1.125rem;
-	padding: 0.5rem 1rem;
-	width: 100%;
+  display: block;
+  color: #888;
+  font-size: 1.125rem;
+  padding: 0.5rem 1rem;
+  width: 100%;
 }
 
 .button {
-	appearance: none;
-	outline: none;
-	border: none;
-	background: none;
-	cursor: pointer;
-
-	display: block;
-	padding: 0.5rem 1rem;
-	background-image: linear-gradient(to right, deeppink 50%, darkviolet 50%);
-	background-size: 200%;
-	color: white;
-	font-size: 1.125rem;
-	font-weight: bold;
-	text-transform: uppercase;
-	transition: 0.4s;
+  padding: 5px 10px;
+  background-color: #aa00ff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
 }
 
 .button:hover {
-	background-position: right;
+  background-color: #0056b3;
+}
+
+.remove-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  padding-left: 15px;
+}
+
+.remove-button span {
+  font-size: 20px;
+  color: red;
 }
 
 .results {
-	background-color: #fff;
-	border-radius: 0.5rem;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-	max-height: 480px;
-	overflow-y: scroll;
-	margin-bottom: 1.5rem;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-height: 480px;
+  overflow-y: scroll;
+  margin-bottom: 1.5rem;
 }
 
 .result {
-	display: flex;
-	margin: 1rem;
-	padding: 1rem;
-	border: 1px solid #ccc;
-	border-radius: 5px;
-	transition: 0.4s;
+  display: flex;
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  transition: 0.4s;
 }
 
 .result img {
-	width: 100px;
-	border-radius: 1rem;
-	margin-right: 1rem;
+  width: 100px;
+  border-radius: 1rem;
+  margin-right: 1rem;
 }
 
 .details {
-	flex: 1 1 0%;
-	display: flex;
-	align-items: flex-start;
-	flex-direction: column;
+  flex: 1 1 0%;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
 }
 
 .details h3 {
-	font-size: 1.25rem;
-	margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .details p {
-	font-size: 0.875rem;
-	margin-bottom: 1rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
 }
 
 .details .button {
-	margin-left: auto;
+  margin-left: auto;
 }
 
 .flex-1 {
-	display: block;
-	flex: 1 1 0%;
+  display: block;
+  flex: 1 1 0%;
 }
 
-.myanime h2 {
-	color: #888;
-	font-weight: 400;
-	margin-bottom: 1.5rem;
+.myanime h1 {
+  color: #181818;
+  font-weight: 400;
+  margin-bottom: 1.5rem;
 }
 
 .myanime .anime {
-	display: flex;
-	align-items: center;
-	margin-bottom: 1.5rem;
-	background-color: #FFF;
-	padding: 1rem;
-	border-radius: 0.5rem;
-	box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  background-color: #f1f1f1c2;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 1px 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 .anime img {
-	width: 72px;
-	height: 72px;
-	object-fit: cover;
-	border-radius: 1rem;
-	margin-right: 1rem;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 1rem;
+  margin-right: 1rem;
 }
 
 .anime h3 {
-	color: #888;
-	font-size: 1.125rem;
+  color: #888;
+  font-size: 1.125rem;
 }
 
 .anime .episodes {
-	margin-right: 1rem;
-	color: #888;
+  margin-right: 1rem;
+  color: #888;
 }
 
 .anime .button:first-of-type {
-	margin-right: 0.5rem;
+  margin-right: 0.5rem;
 }
 
 .anime .button:last-of-type {
-	margin-right: 0;
+  margin-right: 0;
 }
+
 .cardContainer {
   display: flex;
   justify-content: center;
@@ -572,13 +659,14 @@ form input {
   border-radius: 8px;
   color: black;
 }
+
 .delete-button {
   background-color: red;
   color: white;
   border: none;
   padding: 5px 10px;
   cursor: pointer;
-  margin-left: 10px; /* Add some space between the delete button and other elements */
+  margin-left: 10px;
 }
 
 
@@ -675,21 +763,15 @@ form input {
   background-color: #aa00ff;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-}
 .header {
   position: fixed;
-  top: 0;
-  left: 0;
   background-color: #aa00ff;
   color: white;
   padding: 20px;
   text-align: center;
   border-radius: 8px;
   width: 100%;
-  z-index: 100; /* Adjust z-index as needed */
+  z-index: 100;
 }
 
 .header input {
@@ -704,6 +786,7 @@ body {
   border: none;
   cursor: pointer;
 }
+
 .footer {
   background-color: #aa00ff;
   color: white;
@@ -713,8 +796,9 @@ body {
   bottom: 0;
   width: 100%;
   left: 0;
-  z-index: 50; /* Lower z-index than the header */
+  z-index: 50;
 }
+
 .floatingButton {
   position: fixed;
   bottom: 80px;
@@ -735,5 +819,30 @@ body {
 
 .floatingButton:hover {
   background-color: #0056b3;
+}
+
+.top-anime {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.anime-card {
+  width: calc(33.33% - 20px);
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.anime-card img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.anime-details {
+  margin-top: 10px;
 }
 </style>
